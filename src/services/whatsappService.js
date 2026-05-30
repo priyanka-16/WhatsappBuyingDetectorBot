@@ -47,9 +47,7 @@ function createWhatsAppService(config, logger) {
         logger.warn('WhatsApp connection closed', { reconnect })
 
         if (reconnect) {
-          logger.info('Attempting reconnect')
-          shutdown()
-          await start(onMessage)
+            logger.warn('Reconnect skipped')
         }
       }
     })
