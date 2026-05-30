@@ -43,12 +43,7 @@ function createWhatsAppService(config, logger) {
       }
 
       if (connection === 'close') {
-        const reconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
-        logger.warn('WhatsApp connection closed', { reconnect })
-
-        if (reconnect) {
-            logger.warn('Reconnect skipped')
-        }
+        logger.warn('WhatsApp connection closed')
       }
     })
 

@@ -93,11 +93,11 @@ process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught exception', error)
-  shutdown()
+  //shutdown()
 })
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled promise rejection', { reason })
-  shutdown()
+  //shutdown()
 })
 
 start().catch((error) => {
