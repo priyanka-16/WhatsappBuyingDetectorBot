@@ -1,19 +1,21 @@
 {
-  "name": "whatsapp-monitor",
+  "name": "whatsapp-buying-detector",
   "version": "1.0.0",
-  "description": "",
+  "description": "WhatsApp buying intent detector with notification providers and structured logging.",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["whatsapp", "ai", "intent-detection", "notification"],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "@xenova/transformers": "^2.17.2",
     "axios": "^1.16.1",
-    "qrcode-terminal": "^0.12.0"
+    "dotenv": "^16.3.1",
+    "winston": "^3.10.0"
   }
 }

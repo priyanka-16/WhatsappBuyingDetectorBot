@@ -1,2 +1,4 @@
 auth_info
 node_modules
+.env
+product_queries.txt
