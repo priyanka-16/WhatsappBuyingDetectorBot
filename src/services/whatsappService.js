@@ -48,6 +48,7 @@ function createWhatsAppService(config, logger) {
     })
 
     if (!state.creds.registered) {
+      await new Promise(resolve => setTimeout(resolve, 5000))
       await requestPairingCode(sock, config.whatsappMobileNumber, logger)
     }
 
