@@ -17,6 +17,7 @@ function parseNumber(value, fallback) {
 }
 
 const config = {
+  whatsappMobileNumber: process.env.WHATSAPP_MOBILE_NUMBER,
   allowedWhatsAppGroups: parseList(process.env.WHATSAPP_GROUP_IDS),
   similarityThreshold: parseNumber(process.env.SIMILARITY_THRESHOLD, 0.45),
   notificationProviders: parseList(process.env.NOTIFICATION_PROVIDERS, ','),
@@ -30,6 +31,10 @@ const config = {
 
 function validateConfig() {
   const missing = []
+
+  if (!config.whatsappMobileNumber) {
+    missing.push('WHATSAPP_MOBILE_NUMBER')
+  }
 
   if (!config.allowedWhatsAppGroups.length) {
     missing.push('WHATSAPP_GROUP_IDS')

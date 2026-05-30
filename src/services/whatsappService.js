@@ -1,6 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const P = require('pino')
-const readline = require('readline')
 const {
   getRemoteJid,
   isStatusBroadcast,
@@ -56,7 +55,7 @@ function createWhatsAppService(config, logger) {
     })
 
     if (!sock.authState.creds.registered) {
-      await askForPhoneNumber(sock)
+      await requestPairingCode(sock, config.whatsappMobileNumber, logger)
     }
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -99,34 +98,21 @@ function createWhatsAppService(config, logger) {
     })
   }
 
-  async function askForPhoneNumber(sock) {
-    return new Promise((resolve) => {
-      const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-      rl.question('Enter WhatsApp number with country code: ', async (number) => {
-        const code = await sock.requestPairingCode(number)
-
-        logger.info('PAIRING CODE GENERATED')
-        logger.info(code)
-
-        rl.close()
-        resolve()
-      })
-    })
-  }
-
-  function shutdown() {
-    if (sock) {
-      sock.ev.removeAllListeners('messages.upsert')
-      sock.ev.removeAllListeners('connection.update')
-      sock.ev.removeAllListeners('creds.update')
-      sock.end?.()
-    }
-  }
-
   return {
     start,
     shutdown
   }
+}
+
+/**
+ * @param {object} sock - WhatsApp socket
+ * @param {string} mobileNumber - Mobile number with country code
+ * @param {import('winston').Logger} logger
+ */
+async function requestPairingCode(sock, mobileNumber, logger) {
+  const code = await sock.requestPairingCode(mobileNumber)
+  logger.info('PAIRING CODE GENERATED')
+  logger.info(code)
 }
 
 module.exports = {
