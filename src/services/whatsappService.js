@@ -54,7 +54,7 @@ function createWhatsAppService(config, logger) {
       }
     })
 
-    if (!sock.authState.creds.registered) {
+    if (!state.creds.registered) {
       await requestPairingCode(sock, config.whatsappMobileNumber, logger)
     }
 
@@ -97,6 +97,19 @@ function createWhatsAppService(config, logger) {
       }
     })
   }
+
+  function shutdown() {
+  if (!sock) return
+
+  try {
+    sock.ev.removeAllListeners()
+    sock.end?.()
+  } catch (err) {
+    logger.error('Shutdown error', err)
+  }
+
+  sock = null
+}
 
   return {
     start,
