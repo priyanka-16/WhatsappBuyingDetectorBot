@@ -44,6 +44,12 @@ function createWhatsAppService(config, logger) {
 
       if (connection === 'close') {
         logger.warn('WhatsApp connection closed')
+
+        setTimeout(() => {
+            start(onMessage).catch(err => {
+                logger.error('Reconnect failed', err)
+            })
+        }, 5000)
       }
     })
 
@@ -65,15 +71,24 @@ function createWhatsAppService(config, logger) {
         }
 
         const jid = getRemoteJid(msg)
-
+        if (!jid.endsWith('@g.us') || jid === '918269695595-1596145802@g.us') {
+          return
+        }
+         try {
+          const metadata = await sock.groupMetadata(jid)
+          groupName = metadata.subject
+        } catch (err) {
+          logger.warn('Could not fetch group metadata')
+        }
+        // console.log("Group Name:", groupName)
+        // console.log("JID:", jid)
+        // console.log("Sender:", msg.pushName)
+        // console.log("Text:", msg.message.conversation)
         if (isStatusBroadcast(jid) || !isAllowedGroup(jid, config.allowedWhatsAppGroups)) {
           return
         }
 
         const text = getMessageText(msg.message)
-        // console.log("JID:", jid)
-        // console.log("Sender:", msg.pushName)
-        // console.log("Text:", text)
         if (!text) {
           return
         }
@@ -83,6 +98,7 @@ function createWhatsAppService(config, logger) {
           chatId: jid,
           text,
           sender: msg.pushName || 'Unknown',
+          groupName: groupName || 'Unknown',
           isGroup: jid.endsWith('@g.us'),
           timestamp: new Date().toISOString()
         })

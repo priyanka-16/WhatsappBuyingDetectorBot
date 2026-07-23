@@ -1,86 +1,61 @@
-const { pipeline } = require('@xenova/transformers')
-const { examples, categories } = require('../data/buyingExamples')
-const { getBestSimilarity } = require('../utils/similarity')
+const stringSimilarity = require('string-similarity')
 
-let extractor = null
-let exampleEmbeddings = []
+const keywords = [
+  'recommend',
+  'recomend',
+  'recco',
+  'recos',
+  'suggest',
+  'suggestion',
+  'review',
+  'reviews',
+  'which one',
+  "which brand",
+  'worth buying',
+  'looking for',
+  'anyone using',
+  'brand',
+  'brands',
+  'confused',
+  'buy',
+  'purchase',
+  'what do you use',
+  "which one",
+  'help me choose',
+  'need help',
+  'What worked',
+  'What is best',
+  'Need your experience',
+]
 
 /**
- * Initialize the AI model and precompute embeddings for buying intent examples.
- * @param {import('winston').Logger} logger
- */
-async function initializeIntentService(logger) {
-  if (extractor) {
-    return
-  }
-
-  logger.info('Loading intent model')
-  extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2')
-  logger.info('Intent model loaded')
-
-  exampleEmbeddings = []
-
-  for (const example of examples) {
-    const embedding = await getEmbedding(example)
-    exampleEmbeddings.push(embedding)
-  }
-
-  logger.info('Precomputed example embeddings', { exampleCount: examples.length })
-}
-
-/**
+ * Analyze text using lightweight fuzzy keyword matching.
  * @param {string} text
- * @returns {Promise<number[]>}
+ * @returns {{matched: boolean, keyword: string|null, score: number}}
  */
-async function getEmbedding(text) {
-  if (!extractor) {
-    throw new Error('Intent service is not initialized')
-  }
+function analyzeText(text) {
+  const lowerText = String(text).toLowerCase()
 
-  const output = await extractor(text, {
-    pooling: 'mean',
-    normalize: true
-  })
-
-  return Array.from(output.data)
-}
-
-/**
- * @param {string} text
- * @returns {string}
- */
-function detectCategory(text) {
-  const lower = text.toLowerCase()
-
-  for (const category of Object.keys(categories)) {
-    for (const keyword of categories[category]) {
-      if (lower.includes(keyword)) {
-        return category
+  for (const keyword of keywords) {
+    if (lowerText.includes(keyword)) {
+      return {
+        matched: true,
+        keyword,
+        score: 1
       }
     }
   }
 
-  return 'unknown'
-}
+  const { bestMatch } = stringSimilarity.findBestMatch(lowerText, keywords)
+  const score = bestMatch.rating || 0
 
-/**
- * Analyze a chat text and return similarity and category details.
- * @param {string} text
- * @returns {Promise<{similarity: number, category: string}>}
- */
-async function analyzeText(text) {
-  if (!extractor || !exampleEmbeddings.length) {
-    throw new Error('Intent service is not initialized')
-  }
-
-  const embedding = await getEmbedding(text)
   return {
-    similarity: getBestSimilarity(embedding, exampleEmbeddings),
-    category: detectCategory(text)
+    matched: score >= 0.75,
+    keyword: score >= 0.75 ? bestMatch.target : null,
+    score
   }
 }
 
 module.exports = {
-  initializeIntentService,
   analyzeText
 }

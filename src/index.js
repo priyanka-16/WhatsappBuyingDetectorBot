@@ -2,7 +2,7 @@ const fs = require('fs').promises
 const config = require('./config/config')
 const logger = require('./services/loggingService')
 const { createWhatsAppService } = require('./services/whatsappService')
-const { initializeIntentService, analyzeText } = require('./services/intentService')
+const { analyzeText } = require('./services/intentService')
 const notificationService = require('./services/notificationService')
 const MessageDeduplicator = require('./utils/deduplication')
 
@@ -13,47 +13,50 @@ const deduplicator = new MessageDeduplicator(config.messageCacheMaxSize)
  * @param {{id: string, chatId: string, text: string, sender: string, isGroup: boolean, timestamp: string}} message
  */
 async function handleIncomingMessage(message) {
+  logger.debug('Incoming text received', {
+    messageId: message.id,
+    chatId: message.chatId,
+    text: message.text
+  })
+
   if (!deduplicator.addIfNew(message.id)) {
     logger.debug('Duplicate message ignored', { messageId: message.id })
     return
   }
 
-  logger.debug('Processing incoming message', {
-    messageId: message.id,
-    chatId: message.chatId,
-    sender: message.sender
+  const analysis = analyzeText(message.text)
+
+  logger.debug('Text analysis result', {
+    matched: analysis.matched,
+    keyword: analysis.keyword,
+    score: analysis.score
   })
 
-  const analysis = await analyzeText(message.text)
-  logger.debug('Intent analysis complete', {
-    similarity: analysis.similarity,
-    category: analysis.category
-  })
-
-  if (analysis.similarity < config.similarityThreshold) {
-    logger.debug('Message below similarity threshold', {
-      similarity: analysis.similarity,
-      threshold: config.similarityThreshold
+  if (!analysis.matched) {
+    logger.info('No buying intent keyword match', {
+      messageId: message.id,
+      keyword: analysis.keyword,
+      score: analysis.score
     })
     return
   }
 
   const chatType = message.isGroup ? 'GROUP' : 'PRIVATE'
-  const notificationText = `🛒 *BUYING INTENT DETECTED*\n\n*Sender:* ${message.sender}\n*Chat ID:* ${message.chatId}\n*Type:* ${chatType}\n*Category:* ${analysis.category}\n*Similarity:* ${analysis.similarity.toFixed(3)}\n\n*Message:* ${message.text}`
+  const notificationText = `🛒 *BUYING INTENT DETECTED*\n\n*Group:* ${message.groupName}\n*Sender:* ${message.sender}\ns*Message:* ${message.text}`
 
   await notificationService.sendNotification({ text: notificationText })
   await appendLogEntry(message, analysis)
 
   logger.info('Buying intent detected and notification sent', {
     messageId: message.id,
-    similarity: analysis.similarity,
-    category: analysis.category
+    keyword: analysis.keyword,
+    score: analysis.score
   })
 }
 
 /**
  * @param {{id: string, chatId: string, text: string, sender: string, isGroup: boolean, timestamp: string}} message
- * @param {{similarity: number, category: string}} analysis
+ * @param {{matched: boolean, keyword: string|null, score: number}} analysis
  */
 async function appendLogEntry(message, analysis) {
   const entry = [
@@ -61,8 +64,8 @@ async function appendLogEntry(message, analysis) {
     `Type: ${message.isGroup ? 'GROUP' : 'PRIVATE'}`,
     `Sender: ${message.sender}`,
     `Chat ID: ${message.chatId}`,
-    `Similarity: ${analysis.similarity.toFixed(3)}`,
-    `Category: ${analysis.category}`,
+    `Matched Keyword: ${analysis.keyword ?? 'none'}`,
+    `Score: ${analysis.score.toFixed(3)}`,
     `Message: ${message.text}`,
     '----------------------------------------',
     ''
@@ -75,7 +78,6 @@ async function start() {
   logger.info('Starting WhatsApp buying detector')
 
   notificationService.initializeNotificationService(config, logger)
-  await initializeIntentService(logger)
 
   await whatsappService.start(handleIncomingMessage)
 
@@ -93,11 +95,9 @@ process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught exception', error)
-  //shutdown()
 })
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled promise rejection', { reason })
-  //shutdown()
+  logger.error('Unhandled promise rejection', reason?.stack || reason)
 })
 
 start().catch((error) => {
