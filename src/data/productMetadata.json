@@ -1,0 +1,62 @@
+{
+  "sheetRoutes": {
+    "Books": [
+      "book",
+      "books",
+      "storybook",
+      "story book",
+      "reading book",
+      "picture book",
+      "board book"
+    ],
+
+    "Solids essential": [
+      "solid",
+      "solids",
+      "starting solids",
+      "start solids",
+      "weaning",
+      "baby feeding",
+      "solid food"
+    ],
+
+    "Babyproofing & Home Safety": [
+      "babyproof",
+      "baby proof",
+      "babyproofing",
+      "baby proofing",
+      "childproof",
+      "child proof",
+      "cabinet safety",
+      "home safety"
+    ],
+
+    "Pregnancy / Postpartum": [
+      "pregnancy",
+      "pregnant",
+      "postpartum",
+      "after delivery",
+      "after birth"
+    ],
+
+    "Birth & Recovery Essentials": [
+      "delivery recovery",
+      "birth recovery",
+      "after delivery recovery",
+      "c section recovery",
+      "c-section recovery"
+    ],
+
+    "Luxury suggestion": ["luxury", "premium", "high end", "high-end"],
+
+    "Baby Gear & Nursery": ["nursery", "baby gear"],
+
+    "Travel Essentials": [
+      "travel",
+      "travelling",
+      "traveling",
+      "trip with baby",
+      "baby travel"
+    ]
+  }
+}

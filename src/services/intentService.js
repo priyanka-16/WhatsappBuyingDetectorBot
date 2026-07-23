@@ -26,6 +26,11 @@ const keywords = [
   'What worked',
   'What is best',
   'Need your experience',
+  'feeding',
+  'link',
+  'links',
+  'newborn',
+  'hospital bag',
 ]
 
 /**

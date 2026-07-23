@@ -21,6 +21,9 @@ function getMessageText(message) {
 
 function createWhatsAppService(config, logger) {
   let sock = null
+  const groupLinkCache = new Map()
+  const LINK_TTL = 6 * 60 * 60 * 1000        // 6 hours for successful links
+  const FAIL_TTL = 30 * 60 * 1000            // 30 mins before retrying failed ones
 
   async function start(onMessage) {
     const { state, saveCreds } = await useMultiFileAuthState(config.authDataPath)
@@ -74,11 +77,15 @@ function createWhatsAppService(config, logger) {
         if (!jid.endsWith('@g.us') || jid === '918269695595-1596145802@g.us') {
           return
         }
-         try {
+
+        
+        let groupName = 'Unknown'
+
+        try {
           const metadata = await sock.groupMetadata(jid)
           groupName = metadata.subject
         } catch (err) {
-          logger.warn('Could not fetch group metadata')
+          logger.warn('Could not fetch group metadata or invite code')
         }
         // console.log("Group Name:", groupName)
         // console.log("JID:", jid)
@@ -121,9 +128,47 @@ function createWhatsAppService(config, logger) {
   sock = null
 }
 
+async function getGroupLink(jid) {
+    const cached = groupLinkCache.get(jid)
+    const now = Date.now()
+
+    if (cached) {
+      const ttl = cached.link ? LINK_TTL : FAIL_TTL
+      if (now - cached.at < ttl) {
+        return cached.link  // null for non-admin groups (negative cache)
+      }
+    }
+
+    if (!sock) return null
+
+    try {
+      const metadata = await sock.groupMetadata(jid)
+      const myJid = sock.user?.id?.replace(/:\d+/, '') + '@s.whatsapp.net'
+      const me = metadata.participants.find(p => p.id === myJid)
+      const isAdmin = me?.admin === 'admin' || me?.admin === 'superadmin'
+
+      if (!isAdmin) {
+        logger.debug(`Not admin in "${metadata.subject}" — skipping invite link`)
+        groupLinkCache.set(jid, { link: null, at: now })  // negative cache
+        return null
+      }
+
+      const code = await sock.groupInviteCode(jid)
+      const link = `https://chat.whatsapp.com/${code}`
+      groupLinkCache.set(jid, { link, at: now })
+      logger.debug(`Fetched invite link for "${metadata.subject}"`)
+      return link
+    } catch (err) {
+      logger.warn(`Could not fetch invite link for ${jid}: ${err.message}`)
+      groupLinkCache.set(jid, { link: null, at: now })  // negative cache on error too
+      return null
+    }
+  }
+
   return {
     start,
-    shutdown
+    shutdown,
+    getGroupLink
   }
 }
 

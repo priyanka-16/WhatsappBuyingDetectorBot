@@ -1,12 +1,12 @@
-const telegramProvider = require('./providers/telegramProvider')
-const consoleProvider = require('./providers/consoleProvider')
+const telegramProvider = require("./providers/telegramProvider");
+const consoleProvider = require("./providers/consoleProvider");
 
 const providerRegistry = {
   telegram: telegramProvider,
-  console: consoleProvider
-}
+  console: consoleProvider,
+};
 
-let activeProviders = []
+let activeProviders = [];
 
 /**
  * @param {object} config
@@ -14,29 +14,39 @@ let activeProviders = []
  */
 function initializeNotificationService(config, logger) {
   activeProviders = config.notificationProviders.map((providerName) => {
-    const provider = providerRegistry[providerName]
+    const provider = providerRegistry[providerName];
 
     if (!provider) {
-      throw new Error(`Unknown notification provider: ${providerName}`)
+      throw new Error(`Unknown notification provider: ${providerName}`);
     }
 
-    provider.init(config, logger)
-    return provider
-  })
+    provider.init(config, logger);
+    return provider;
+  });
 }
 
 /**
- * @param {{text: string}} payload
+ * @param {{
+ *   text: string,
+ *   sender: string,
+ *   groupName: string,
+ *   groupLink?: string,
+ *   matchedKeyword?: string,
+ *   timestamp: string,
+ *   recommendations?: Array<object>
+ * }} payload
  */
 async function sendNotification(payload) {
   if (!activeProviders.length) {
-    throw new Error('No notification providers configured')
+    throw new Error("No notification providers configured");
   }
 
-  await Promise.all(activeProviders.map((provider) => provider.sendNotification(payload)))
+  await Promise.all(
+    activeProviders.map((provider) => provider.sendNotification(payload)),
+  );
 }
 
 module.exports = {
   initializeNotificationService,
-  sendNotification
-}
+  sendNotification,
+};
