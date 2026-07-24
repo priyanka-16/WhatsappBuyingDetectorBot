@@ -9,6 +9,10 @@ const MessageDeduplicator = require("./utils/deduplication");
 const whatsappService = createWhatsAppService(config, logger);
 const deduplicator = new MessageDeduplicator(config.messageCacheMaxSize);
 const {
+  classifyBuyingIntent,
+  rerankProducts,
+} = require("./services/aiRecommendationService");
+const {
   recommendProducts,
 } = require("./services/productRecommendationService");
 
@@ -23,7 +27,9 @@ async function handleIncomingMessage(message) {
   });
 
   if (!deduplicator.addIfNew(message.id)) {
-    logger.debug("Duplicate message ignored", { messageId: message.id });
+    logger.debug("Duplicate message ignored", {
+      messageId: message.id,
+    });
     return;
   }
 
@@ -41,16 +47,88 @@ async function handleIncomingMessage(message) {
       keyword: analysis.keyword,
       score: analysis.score,
     });
+
     return;
   }
 
-  const groupLink = message.isGroup
-    ? await whatsappService.getGroupLink(message.chatId)
-    : null;
+  //AI intent classification
+  let intentResult;
 
-  const recommendations = recommendProducts(message.text, {
-    maxResults: 3,
+  try {
+    intentResult = await classifyBuyingIntent(message.text);
+  } catch (error) {
+    logger.error("AI buying-intent classification failed", {
+      messageId: message.id,
+      error: error.message,
+    });
+    return;
+  }
+
+  logger.info("AI buying intent result", {
+    messageId: message.id,
+    buyingIntent: intentResult.buyingIntent,
+    confidence: intentResult.confidence,
   });
+
+  if (!intentResult.buyingIntent) {
+    logger.info("Message rejected by AI buying-intent classifier", {
+      messageId: message.id,
+      confidence: intentResult.confidence,
+    });
+
+    return;
+  }
+
+  let groupLink = null;
+
+  if (message.isGroup) {
+    try {
+      groupLink = await whatsappService.getGroupLink(message.chatId);
+    } catch (error) {
+      logger.error("Failed to get WhatsApp group link", {
+        messageId: message.id,
+        chatId: message.chatId,
+        error: error.message,
+      });
+    }
+  }
+
+  // Retrieve products
+  let candidates = [];
+
+  try {
+    candidates = recommendProducts(message.text, {
+      maxResults: 10,
+    });
+
+    logger.info(`Retrieved ${candidates.length} product candidate(s)`);
+  } catch (error) {
+    logger.error("Product retrieval failed", {
+      messageId: message.id,
+      error: error.message,
+    });
+
+    candidates = [];
+  }
+
+  let recommendations = [];
+
+  if (candidates.length > 0) {
+    try {
+      const rerankResult = await rerankProducts(message.text, candidates);
+
+      recommendations = rerankResult.selectedProducts;
+
+      logger.info(`AI selected ${recommendations.length} recommendation(s)`);
+    } catch (error) {
+      logger.error("AI product reranking failed", {
+        messageId: message.id,
+        error: error.message,
+      });
+
+      recommendations = [];
+    }
+  }
 
   await notificationService.sendNotification({
     text: message.text,
@@ -61,12 +139,15 @@ async function handleIncomingMessage(message) {
     timestamp: message.timestamp,
     recommendations,
   });
+
   await appendLogEntry(message, analysis);
 
   logger.info("Buying intent detected and notification sent", {
     messageId: message.id,
     keyword: analysis.keyword,
     score: analysis.score,
+    aiConfidence: intentResult.confidence,
+    recommendations: recommendations.length,
   });
 }
 
