@@ -17,6 +17,7 @@ const TEST_MESSAGES = [
   "Koi acha diaper suggest karo",
   "Which brand are you using for diapers?",
   "Has anyone used this stroller? Is it good?",
+  "Any suggestions on how to clean 2 months baby tongue after feed\n\nAny product suggestion ?",
 
   // FALSE
   "Thanks",

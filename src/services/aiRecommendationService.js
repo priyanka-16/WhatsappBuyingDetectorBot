@@ -100,6 +100,7 @@ async function callQwen(systemPrompt, userPrompt) {
  * searching/reranking products.
  */
 async function classifyBuyingIntent(message) {
+  console.log("🤖 classifyBuyingIntent called with message:", message);
   if (!message || !String(message).trim()) {
     return {
       buyingIntent: false,
@@ -125,6 +126,36 @@ TRUE examples:
 - "Koi acha diaper suggest karo"
 - "Best bottle kaunsa hai?"
 
+Buying intent can also be NEED-BASED.
+
+The user does NOT need to know or mention the name of a product.
+
+If the user describes a problem, activity, situation, or need and asks whether
+there is a product, item, thing, recommendation, or something they can buy/use
+for that need, this IS product recommendation intent.
+
+TRUE examples:
+
+- "How do I clean my baby's tongue? Any product suggestion?"
+- "Anything I can buy for cleaning baby's tongue?"
+- "Is there any product for baby proofing cabinets?"
+- "What can I use while travelling with baby?"
+- "Any product that helps with leaking milk?"
+- "Something useful for starting solids?"
+- "What should I get for tummy time?"
+- "Any product recommendation for cleaning bottles?"
+- "Baby keeps scratching herself, anything I can buy to prevent it?"
+
+The first part of a message may describe a parenting problem or ask for advice,
+while a later part asks for a product. Evaluate the ENTIRE message.
+
+If ANY part of the message clearly asks for a product recommendation,
+product option, item to buy/use, or suitable product for the described need,
+buyingIntent should be true.
+
+Do not classify such a message as general parenting advice merely because
+the product request depends on context from an earlier sentence.
+
 FALSE examples:
 - "Thanks"
 - "I bought this yesterday"
@@ -135,9 +166,9 @@ FALSE examples:
 - "This worked for my baby"
 - "Here is the link"
 - "Has anyone received their order?"
-- general parenting advice
-- medical questions
-- feeding questions that are not asking what product to buy
+- general parenting advice WITHOUT a product request
+- medical questions WITHOUT a product request
+- feeding questions that are not asking for a product
 - people merely discussing a product they already own
 
 A product name appearing in a message does NOT automatically mean buying intent.
