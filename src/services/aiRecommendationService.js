@@ -2,6 +2,7 @@ const axios = require("axios");
 
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 const MODEL = "qwen3:4b";
+const { GoogleGenAI } = require("@google/genai");
 
 const REQUEST_CONFIG = {
   timeout: 120000,
@@ -82,6 +83,25 @@ async function callQwen(systemPrompt, userPrompt) {
   } catch (error) {
     throw new Error(`Qwen returned invalid JSON: ${content}`);
   }
+}
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+async function callGemini(systemPrompt, userPrompt) {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+
+    contents: userPrompt,
+
+    config: {
+      systemInstruction: systemPrompt,
+      temperature: 0,
+      responseMimeType: "application/json",
+    },
+  });
+
+  return JSON.parse(response.text);
 }
 
 /*
@@ -194,7 +214,7 @@ Return only the JSON result.
 `.trim();
 
   try {
-    const parsed = await callQwen(systemPrompt, userPrompt);
+    const parsed = await callGemini(systemPrompt, userPrompt);
 
     /*
      * Be strict.
@@ -384,7 +404,7 @@ Return only JSON.
 `.trim();
 
   try {
-    const parsed = await callQwen(systemPrompt, userPrompt);
+    const parsed = await callGemini(systemPrompt, userPrompt);
 
     /*
      * Temporary debugging.
